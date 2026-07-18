@@ -94,12 +94,13 @@ func (m *Manager) Status() (map[string]int, error) {
 
 // RetryDeadJob resets a dead job's attempts to 0 and moves it back to pending.
 func (m *Manager) RetryDeadJob(jobID string) error {
+	now := time.Now().UTC()
 	query := `
 		UPDATE jobs 
-		SET state = ?, attempts = 0, run_after = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+		SET state = ?, attempts = 0, run_after = ?, updated_at = ? 
 		WHERE id = ? AND state = ?
 	`
-	res, err := m.store.DB().Exec(query, string(job.StatePending), jobID, string(job.StateDead))
+	res, err := m.store.DB().Exec(query, string(job.StatePending), now, now, jobID, string(job.StateDead))
 	if err != nil {
 		return fmt.Errorf("failed to retry dlq job: %w", err)
 	}

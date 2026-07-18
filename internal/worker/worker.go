@@ -115,19 +115,20 @@ func (m *Manager) workerLoop(ctx context.Context, wg *sync.WaitGroup, id int) {
 // claimJob atomically claims a pending job.
 func (m *Manager) claimJob() (*job.Job, error) {
 	// SQLite specific atomic update using RETURNING
+	now := time.Now().UTC()
 	query := `
 		UPDATE jobs 
-		SET state = 'processing', updated_at = CURRENT_TIMESTAMP 
+		SET state = 'processing', updated_at = ? 
 		WHERE id = (
 			SELECT id FROM jobs 
-			WHERE state = 'pending' AND run_after <= CURRENT_TIMESTAMP 
+			WHERE state = 'pending' AND run_after <= ? 
 			ORDER BY priority DESC, created_at ASC 
 			LIMIT 1
 		) 
 		RETURNING id, command, attempts, max_retries, output, priority, timeout, execution_time_ms
 	`
 
-	row := m.store.DB().QueryRow(query)
+	row := m.store.DB().QueryRow(query, now, now)
 	var j job.Job
 	err := row.Scan(&j.ID, &j.Command, &j.Attempts, &j.MaxRetries, &j.Output, &j.Priority, &j.Timeout, &j.ExecutionTimeMs)
 	if err != nil {
@@ -140,7 +141,7 @@ func (m *Manager) claimJob() (*job.Job, error) {
 }
 
 func (m *Manager) updateJobState(id string, state job.State, output string, execTimeMs int64) {
-	_, err := m.store.DB().Exec(`UPDATE jobs SET state = ?, output = ?, execution_time_ms = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, state, output, execTimeMs, id)
+	_, err := m.store.DB().Exec(`UPDATE jobs SET state = ?, output = ?, execution_time_ms = ?, updated_at = ? WHERE id = ?`, state, output, execTimeMs, time.Now().UTC(), id)
 	if err != nil {
 		m.logger.Error("Failed to update job state", "job_id", id, "error", err)
 	}
@@ -165,9 +166,9 @@ func (m *Manager) handleFailure(j *job.Job, execErr error, output string, execTi
 
 	m.logger.Warn("Job failed, scheduling retry", "job_id", j.ID, "error", execErr, "attempts", j.Attempts, "delay", delay)
 
-	query := `UPDATE jobs SET state = ?, attempts = ?, output = ?, execution_time_ms = ?, run_after = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	query := `UPDATE jobs SET state = ?, attempts = ?, output = ?, execution_time_ms = ?, run_after = ?, updated_at = ? WHERE id = ?`
 	runAfter := time.Now().UTC().Add(delay)
-	_, err := m.store.DB().Exec(query, string(job.StatePending), j.Attempts, output, execTimeMs, runAfter, j.ID)
+	_, err := m.store.DB().Exec(query, string(job.StatePending), j.Attempts, output, execTimeMs, runAfter, time.Now().UTC(), j.ID)
 	if err != nil {
 		m.logger.Error("Failed to update job for retry", "job_id", j.ID, "error", err)
 	}
