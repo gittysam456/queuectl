@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueCTL Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fff5eb; /* Soft warm peach background */
+            --text-main: #5c4d57;
+            --text-light: #9c8a95;
+            
+            --c-pending: #ffdfba;
+            --c-processing: #ffffba;
+            --c-completed: #baffc9;
+            --c-failed: #ffb3ba;
+            --c-dead: #e6c9ff;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            /* Cute dot pattern background */
+            background-image: radial-gradient(#ffdfba 20%, transparent 20%), radial-gradient(#ffdfba 20%, transparent 20%);
+            background-position: 0 0, 15px 15px;
+            background-size: 30px 30px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 40px;
+            box-shadow: 0 15px 40px rgba(255, 182, 193, 0.4);
+            border: 4px solid #ffdde4;
+        }
+
+        h1 {
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 600;
+            color: #ff8b94;
+            font-size: 3rem;
+            margin-top: 0;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 0px #ffdfba;
+        }
+
+        /* Status Cards */
+        .status-grid {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            flex: 1;
+            padding: 25px 15px;
+            border-radius: 30px;
+            text-align: center;
+            border: 4px solid rgba(0,0,0,0.05);
+            box-shadow: 0 8px 0 rgba(0,0,0,0.08);
+            transition: all 0.2s ease;
+            font-family: 'Fredoka', sans-serif;
+            cursor: pointer;
+        }
+        
+        .card:hover { transform: translateY(-5px); box-shadow: 0 13px 0 rgba(0,0,0,0.08); }
+        .card:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.08); }
+        
+        .card.pending { background-color: var(--c-pending); color: #c46a00; border-color: #f7ceab; }
+        .card.processing { background-color: var(--c-processing); color: #9c9c00; border-color: #ededad; }
+        .card.completed { background-color: var(--c-completed); color: #2e8b45; border-color: #aae6b7;}
+        .card.failed { background-color: var(--c-failed); color: #bd1a2b; border-color: #eea2a9;}
+        .card.dead { background-color: var(--c-dead); color: #763b9c; border-color: #dcbcee; }
+
+        .card-title {
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .card-value {
+            font-size: 3.5rem;
+            font-weight: 600;
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.5);
+        }
+
+        /* Jobs Table */
+        .table-container {
+            background: #ffffff;
+            border-radius: 30px;
+            border: 4px solid #ffdde4;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 20px;
+            border-bottom: 3px dotted #ffdde4;
+        }
+        
+        tr:last-child td { border-bottom: none; }
+
+        th {
+            background: #fff0f5;
+            color: #e57373;
+            font-family: 'Fredoka', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+
+        .badge {
+            padding: 8px 18px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 700;
+            display: inline-block;
+            font-family: 'Fredoka', sans-serif;
+            border: 3px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.08);
+            text-transform: capitalize;
+        }
+
+        .badge.pending { background: var(--c-pending); color: #c46a00; }
+        .badge.processing { background: var(--c-processing); color: #9c9c00; }
+        .badge.completed { background: var(--c-completed); color: #2e8b45; }
+        .badge.failed { background: var(--c-failed); color: #bd1a2b; }
+        .badge.dead { background: var(--c-dead); color: #763b9c; }
+
+        .terminal-output {
+            background: #5c4d57;
+            color: #ffdde4;
+            padding: 15px;
+            border-radius: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 4px solid #ffb3ba;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.2);
+        }
+        
+        .terminal-output:empty {
+            display: none;
+        }
+        
+        .mono { 
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 0.95rem; 
+            font-weight: bold; 
+            background: #fff0f5; 
+            padding: 6px 10px; 
+            border-radius: 12px; 
+            color: #e57373; 
+            border: 2px solid #ffdde4;
+        }
+        .sub-text { color: var(--text-light); font-size: 0.9rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>QueueCTL Dashboard</h1>
+    
+    <div class="status-grid">
+        <div class="card pending">
+            <div class="card-title">💤 Pending</div>
+            <div class="card-value" id="count-pending">0</div>
+        </div>
+        <div class="card processing">
+            <div class="card-title">⚙️ Processing</div>
+            <div class="card-value" id="count-processing">0</div>
+        </div>
+        <div class="card completed">
+            <div class="card-title">✨ Completed</div>
+            <div class="card-value" id="count-completed">0</div>
+        </div>
+        <div class="card failed">
+            <div class="card-title">❌ Failed</div>
+            <div class="card-value" id="count-failed">0</div>
+        </div>
+        <div class="card dead">
+            <div class="card-title">💀 DLQ (Dead)</div>
+            <div class="card-value" id="count-dead">0</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Job ID</th>
+                    <th>Command</th>
+                    <th>Priority</th>
+                    <th>Attempts</th>
+                    <th>Exec Time</th>
+                </tr>
+            </thead>
+            <tbody id="jobs-body">
+                <!-- Rows populated by JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function fetchStatus() {
+        try {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            document.getElementById('count-pending').innerText = data.pending || 0;
+            document.getElementById('count-processing').innerText = data.processing || 0;
+            document.getElementById('count-completed').innerText = data.completed || 0;
+            document.getElementById('count-failed').innerText = data.failed || 0;
+            document.getElementById('count-dead').innerText = data.dead || 0;
+        } catch (e) {
+            console.error("Failed to fetch status");
+        }
+    }
+
+    async function fetchJobs() {
+        try {
+            const res = await fetch('/api/list');
+            const data = await res.json();
+            const tbody = document.getElementById('jobs-body');
+            tbody.innerHTML = '';
+            
+            if (!data) return;
+
+            data.forEach(job => {
+                const tr = document.createElement('tr');
+                
+                let outputHtml = '';
+                if (job.output) {
+                    outputHtml = `<div class="terminal-output">${escapeHtml(job.output)}</div>`;
+                }
+
+                tr.innerHTML = `
+                    <td style="vertical-align: top;">
+                        <span class="badge ${job.state}">${job.state}</span>
+                    </td>
+                    <td style="vertical-align: top; white-space: nowrap;"><span class="mono">${job.id}</span></td>
+                    <td style="vertical-align: top;">
+                        <span class="mono">${escapeHtml(job.command)}</span>
+                        ${outputHtml}
+                    </td>
+                    <td style="vertical-align: top; font-weight: 700; color: #ff8b94; font-size: 1.1rem;">⭐ ${job.priority}</td>
+                    <td style="vertical-align: top; font-weight: 700; font-size: 1.1rem;">${job.attempts} <span class="sub-text">/ ${job.max_retries}</span></td>
+                    <td style="vertical-align: top; font-weight: 700; color: #5c4d57; font-size: 1.1rem;">⏳ ${job.execution_time_ms}ms</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error("Failed to fetch jobs");
+        }
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    // Initial load
+    fetchStatus();
+    fetchJobs();
+
+    // Auto-refresh every 2 seconds
+    setInterval(() => {
+        fetchStatus();
+        fetchJobs();
+    }, 2000);
+</script>
+
+</body>
+</html>
