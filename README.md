@@ -96,3 +96,6 @@ To quickly verify that everything is working as expected, a PowerShell validatio
    - Prints the initial queue status.
    - Starts the background workers for 5 seconds to process the queued jobs.
    - Prints the final queue status to verify that the jobs successfully moved to the `completed` and `dead` states.
+   
+## DEMO VIDEO LINK
+https://drive.google.com/file/d/1GF39AHpdmaLVYpX0cZLubrXonwkn_e8h/view?usp=sharing
